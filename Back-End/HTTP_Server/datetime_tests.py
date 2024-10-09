@@ -1,3 +1,2 @@
-import datetime as dt
-
-print(dt.datetime.now())
+for x in range (5):
+    print (x+1)
