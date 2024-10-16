@@ -12,15 +12,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the current directory contents into the container at /app
 COPY basicserver.py .
-COPY templates .
 
 # Make port 5000 available to the world outside this container
 EXPOSE 8080
 
 # Define environment variable
-ENV FLASK_APP=basicserver.py
 ENV PORT=8080
 ENV DEBUG=0
 
 # Run the application
-CMD ["python3", "$FLASK_APP"]
+CMD ["python3", "/app/basicserver.py"]

@@ -41,12 +41,12 @@ def init_db():
 # Initialize the database
 # init_db()
 
-def query(table, where = None):
+def query(table, where = None, equals = None):
     conn = get_db_connection()
     cursor = conn.cursor()
     
     if where != None:
-        cursor.execute(f'SELECT * FROM {table} WHERE plant_id = ?', (where))
+        cursor.execute(f'SELECT * FROM {table} WHERE {where} = "{equals}"')
     else:
         cursor.execute(f'SELECT * FROM {table}')
     
@@ -79,6 +79,12 @@ def get_plants():
     # return render_template('table.html', rows=rows, headers=headers)
     return jsonify(data), 200
 
+@app.route('/plants/<user_id>', methods=['GET'])
+def get_plants_spc(user_id):
+    data, headers = query('plants', where='user_id', equals=user_id)
+    # return render_template('table.html', rows=rows, headers=headers)
+    return jsonify(data), 200
+
 #/plant_types to get the types of plants
 @app.route('/plant_types', methods=['GET'])
 def get_plant_types():
@@ -105,18 +111,18 @@ def get_data():
     data, headers = query('data')
 
     for row in data:
-        row['date_added'] = convert_to_local_time(row['date_added'])
+        row['timestamp'] = convert_to_local_time(row['timestamp'])
 
     return jsonify(data), 200
 
 #/data/<plant_id> gets entries for a specific plant
 @app.route('/data/<plant_id>', methods=['GET'])
 def get_data_specific(plant_id):
-    data, headers = query('data', where=plant_id)
+    data, headers = query('data', where='plant_id', equals=plant_id)
 
     # Convert date_added from UTC to local time for each row
     for row in data:
-        row['date_added'] = convert_to_local_time(row.get('date_added'))
+        row['timestamp'] = convert_to_local_time(row['timestamp'])
 
     # return render_template('table.html', rows=rows, headers=headers)
 
@@ -160,10 +166,10 @@ def add_plant():
     plantType = data.get('plantType')
 
     if not user_id:
-        return jsonify({'error': 'User ID is required'}), 400
+        return jsonify({'error': 'user_id is required'}), 400
     
     if not plantType:
-        return jsonify({'error': 'Plant type id is required'}), 400
+        return jsonify({'error': 'plantType is required'}), 400
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -176,6 +182,42 @@ def add_plant():
     conn.close()
 
     return jsonify({'plant_id': new_plant_id, 'user_id': user_id, 'plantType_id': plantType}), 201
+
+@app.route('/login', methods=['POST'])
+def user_login():
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+
+    if not username:
+        return 'username not detected \n', 400
+    if not password:
+        return 'password not detected \n', 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(f'SELECT password FROM users WHERE name = "{username}"')
+
+    rows = cursor.fetchall()
+
+    results = [dict(row) for row in rows]
+    try:
+        saved_password = results[0]['password']
+    except:
+        return 'Wrong username of password \n', 409
+
+    if password != saved_password:
+        conn.close()
+        return 'Wrong username or password. \n', 409
+    
+    cursor.execute(f'SELECT id FROM users WHERE name = "{username}"')
+    rows = cursor.fetchall()
+    results = [dict(row) for row in rows]
+    user_id = results[0]
+
+    return jsonify(user_id), 201
+
 
 @app.route('/create_data/<ammount>', methods=["GET"])
 def create_data(ammount):
@@ -244,20 +286,25 @@ def create_db():
 
         print("Database created ", 201)
 
-        create_data(5)
+        create_data(2)
         return
     
     print("Database already exists ", 418)
 
+if not os.path.exists('test.db'):
+    create_db()
 
-PORT = os.environ['PORT']
-
-if PORT == None:
+try:
+    PORT = os.environ['PORT']
+except:
     PORT = 8080
 
-debug = os.environ['DEBUG']
+try:
+    debug = os.environ['DEBUG']
+except:
+    debug = ""
 
-if debug == '1':
+if debug == 1:
     debug = True
 else:
     debug = False
