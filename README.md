@@ -1,3 +1,8 @@
 # TP Plantas
 
-Si quieren metan README me da alta paja.
+Proyecto Final de Metodologia del Aprendizaje 2024 2C
+
+Grupo 1
+Integrantes:
+
+
